@@ -317,20 +317,31 @@ module decode (
 		.ALUOp(ALUOp)
 	);
 
-	// ADD CODE BELOW
-	// Add code for the ALU Decoder and PC Logic.
-	// Remember, you may reuse code from previous labs.
 	// ALU Decoder
+	always @(*)
+		if (ALUOp) begin
+			case (Funct[4:1])
+				4'b0100: ALUControl = 2'b00;
+				4'b0010: ALUControl = 2'b01;
+				4'b0000: ALUControl = 2'b10;
+				4'b1100: ALUControl = 2'b11;
+				default: ALUControl = 2'bxx;
+			endcase
+			FlagW[1] = Funct[0];
+			FlagW[0] = Funct[0] & ((ALUControl == 2'b00) | (ALUControl == 2'b01));
+		end
+		else begin
+			ALUControl = 2'b00;
+			FlagW = 2'b00;
+		end
 
 	// PC Logic
-
-
-	// Add code for the Instruction Decoder (Instr Decoder) below.
-	// Recall that the input to Instr Decoder is Op, and the outputs are
-	// ImmSrc and RegSrc. We've completed the ImmSrc logic for you.
+	assign PCS = ((Rd == 4'b1111) & RegW) | Branch;
 
 	// Instr Decoder
 	assign ImmSrc = Op;
+	assign RegSrc[1] = Op == 2'b01; // RegSrc1 is 1 for STR, 0 for DP and the rest don't care
+	assign RegSrc[0] = Op == 2'b10; // RegSrc0 is only 1 for B instructions
 endmodule
 
 module mainfsm (
@@ -463,6 +474,8 @@ module condlogic (
 	wire [3:0] Flags;
 	wire CondEx;
 
+	wire CurrentCondEx;
+	wire PCSrc;
 	// Delay writing flags until ALUWB state
 	flopr #(2) flagwritereg(
 		clk,
@@ -470,9 +483,36 @@ module condlogic (
 		FlagW & {2 {CondEx}},
 		FlagWrite
 	);
-
-	// ADD CODE HERE
-
+	flopenr #(2) flagreg1(
+		.clk(clk),
+		.reset(reset),
+		.en(FlagWrite[1]),
+		.d(ALUFlags[3:2]),
+		.q(Flags[3:2])
+	);
+	flopenr #(2) flagreg0(
+		.clk(clk),
+		.reset(reset),
+		.en(FlagWrite[0]),
+		.d(ALUFlags[1:0]),
+		.q(Flags[1:0])
+	);
+	flopr #(1) condexreg(
+		.clk(clk),
+		.reset(reset),
+		.d(CondEx),
+		.q(CurrentCondEx)
+	);
+	condcheck cc(
+		.Cond(Cond),
+		.Flags(Flags),
+		.CondEx(CondEx)
+	);
+	// assign FlagWrite = FlagW & {2 {CurrentCondEx}};
+	assign RegWrite = RegW & CurrentCondEx;
+	assign MemWrite = MemW & CurrentCondEx;
+	assign PCSrc = PCS & CurrentCondEx;
+	assign PCWrite = PCSrc | NextPC;
 endmodule
 
 module condcheck (
@@ -483,8 +523,32 @@ module condcheck (
 	input wire [3:0] Cond;
 	input wire [3:0] Flags;
 	output wire CondEx;
-
-	// ADD CODE HERE
+	wire neg;
+	wire zero;
+	wire carry;
+	wire overflow;
+	wire ge;
+	assign {neg, zero, carry, overflow} = Flags;
+	assign ge = neg == overflow;
+	always @(*)
+		case (Cond)
+			4'b0000: CondEx = zero;
+			4'b0001: CondEx = ~zero;
+			4'b0010: CondEx = carry;
+			4'b0011: CondEx = ~carry;
+			4'b0100: CondEx = neg;
+			4'b0101: CondEx = ~neg;
+			4'b0110: CondEx = overflow;
+			4'b0111: CondEx = ~overflow;
+			4'b1000: CondEx = carry & ~zero;
+			4'b1001: CondEx = ~(carry & ~zero);
+			4'b1010: CondEx = ge;
+			4'b1011: CondEx = ~ge;
+			4'b1100: CondEx = ~zero & ge;
+			4'b1101: CondEx = ~(~zero & ge);
+			4'b1110: CondEx = 1'b1;
+			default: CondEx = 1'bx;
+		endcase
 endmodule
 
 // ADD CODE BELOW
@@ -551,7 +615,102 @@ module datapath (
 	// applicable names such as pcreg (PC register), adrmux 
 	// (Address Mux), etc. so that your code is easier to understand.
 
-	// ADD CODE HERE
+	flopenr #(32) pcreg(
+		.clk(clk),
+		.reset(reset),
+		.en(PCWrite),
+		.d(Result),
+		.q(PC)
+	);
+	mux2 #(32) adrmux(
+		.d0(PC),
+		.d1(Result),
+		.s(AdrSrc),
+		.y(Adr)
+	);
+	// here goes (implicitly) the instruction/data memory
+	flopenr #(32) instrreg(
+		.clk(clk),
+		.reset(reset),
+		.en(IRWrite),
+		.d(ReadData),
+		.q(Instr)
+	);
+	flopr #(32) readdatareg(
+		.clk(clk),
+		.reset(reset),
+		.d(ReadData),
+		.q(Data)
+	);
+	mux2 #(4) ra1mux(
+		.d0(Instr[19:16]),
+		.d1(4'b1111),
+		.s(RegSrc[0]),
+		.y(RA1)
+	);
+	mux2 #(4) ra2mux(
+		.d0(Instr[3:0]),
+		.d1(Instr[15:12]),
+		.s(RegSrc[1]),
+		.y(RA2)
+	);
+	regfile rf(
+		.clk(clk),
+		.we3(RegWrite),
+		.ra1(RA1),
+		.ra2(RA2),
+		.wa3(Instr[15:12]),
+		.wd3(Result),
+		.r15(Result),
+		.rd1(RD1),
+		.rd2(RD2)
+	);
+	extend ext(
+		.Instr(Instr[23:0]),
+		.ImmSrc(ImmSrc),
+		.ExtImm(ExtImm)
+	);
+	flopr2 #(32) regdatareg(
+		.clk(clk),
+		.reset(reset),
+		.d0(RD1),
+		.d1(RD2),
+		.q0(A),
+		.q1(WriteData)
+	);
+	mux2 #(32) srcamux(
+		.d0(A),
+		.d1(PC),
+		.s(ALUSrcA),
+		.y(SrcA)
+	);
+	mux3 #(32) srcbmux(
+		.d0(WriteData),
+		.d1(ExtImm),
+		.d2(4),
+		.s(ALUSrcB),
+		.y(SrcB)
+	);
+	alu alu(
+		SrcA,
+		SrcB,
+		ALUControl,
+		ALUResult,
+		ALUFlags
+	);
+	flopr #(32) aluresultreg(
+		.clk(clk),
+		.reset(reset),
+		.d(ALUResult),
+		.q(ALUOut)
+	);
+	mux3 #(32) resmux(
+		.d0(ALUOut),
+		.d1(Data),
+		.d2(ALUResult),
+		.s(ResultSrc),
+		.y(Result)
+	);
 endmodule
 
 // ADD CODE BELOW
