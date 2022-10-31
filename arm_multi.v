@@ -142,7 +142,7 @@ module arm (
 	wire IRWrite;
 	wire AdrSrc;
 	wire [1:0] RegSrc;
-	wire [1:0] ALUSrcA;
+	wire ALUSrcA;
 	wire [1:0] ALUSrcB;
 	wire [1:0] ImmSrc;
 	wire [1:0] ALUControl;
@@ -212,7 +212,7 @@ module controller (
 	output wire IRWrite;
 	output wire AdrSrc;
 	output wire [1:0] RegSrc;
-	output wire [1:0] ALUSrcA;
+	output wire ALUSrcA;
 	output wire [1:0] ALUSrcB;
 	output wire [1:0] ResultSrc;
 	output wire [1:0] ImmSrc;
@@ -283,7 +283,7 @@ module decode (
 	input wire [1:0] Op;
 	input wire [5:0] Funct;
 	input wire [3:0] Rd;
-	output wire [1:0] FlagW;
+	output reg [1:0] FlagW;
 	output wire PCS;
 	output wire NextPC;
 	output wire RegW;
@@ -291,11 +291,11 @@ module decode (
 	output wire IRWrite;
 	output wire AdrSrc;
 	output wire [1:0] ResultSrc;
-	output wire [1:0] ALUSrcA;
+	output wire ALUSrcA;
 	output wire [1:0] ALUSrcB;
 	output wire [1:0] ImmSrc;
 	output wire [1:0] RegSrc;
-	output wire [1:0] ALUControl;
+	output reg [1:0] ALUControl;
 	wire Branch;
 	wire ALUOp;
 
@@ -366,7 +366,7 @@ module mainfsm (
 	input wire [5:0] Funct;
 	output wire IRWrite;
 	output wire AdrSrc;
-	output wire [1:0] ALUSrcA;
+	output wire ALUSrcA;
 	output wire [1:0] ALUSrcB;
 	output wire [1:0] ResultSrc;
 	output wire NextPC;
@@ -377,25 +377,25 @@ module mainfsm (
 	reg [3:0] state;
 	reg [3:0] nextstate;
 	reg [12:0] controls;
-	localparam [3:0] FETCH = 0;
-	localparam [3:0] BRANCH = 9;
-	localparam [3:0] DECODE = 1;
-	localparam [3:0] EXECUTEI = 7;
-	localparam [3:0] EXECUTER = 6;
-	localparam [3:0] MEMADR = 2;
-	localparam [3:0] UNKNOWN = 10;
 
+	localparam [3:0] FETCH = 0;
+	localparam [3:0] DECODE = 1;
+	localparam [3:0] MEMADR = 2;
+	localparam [3:0] MEMRD = 3;
+	localparam [3:0] MEMWB = 4;
+	localparam [3:0] MEMWR = 5;
+	localparam [3:0] EXECUTER = 6;
+	localparam [3:0] EXECUTEI = 7;
+	localparam [3:0] ALUWB = 8;
+	localparam [3:0] BRANCH = 9;
+	localparam [3:0] UNKNOWN = 10;
+	
 	// state register
 	always @(posedge clk or posedge reset)
 		if (reset)
 			state <= FETCH;
 		else
 			state <= nextstate;
-	
-
-	// ADD CODE BELOW
-  	// Finish entering the next state logic below.  We've completed the 
-  	// first two states, FETCH and DECODE, for you.
 
   	// next state logic
 	always @(*)
@@ -412,30 +412,34 @@ module mainfsm (
 					2'b10: nextstate = BRANCH;
 					default: nextstate = UNKNOWN;
 				endcase
-			EXECUTER:
-			EXECUTEI:
 			MEMADR:
-			MEMRD:
+				if (Funct[0]) 
+					nextstate = MEMRD;
+				else
+					nextstate = MEMWR;
+			MEMRD: nextstate = MEMWB;
+			MEMWB: nextstate = FETCH;
+			MEMWR: nextstate = FETCH;
+			EXECUTER: nextstate = ALUWB;
+			EXECUTEI: nextstate = ALUWB;
+			ALUWB: nextstate = FETCH;
+			BRANCH: nextstate = FETCH;
 			default: nextstate = FETCH;
 		endcase
-
-	// ADD CODE BELOW
-	// Finish entering the output logic below.  We've entered the
-	// output logic for the first two states, FETCH and DECODE, for you.
 
 	// state-dependent output logic
 	always @(*)
 		case (state)
 			FETCH: controls = 13'b1000101001100;
 			DECODE: controls = 13'b0000001001100;
-			EXECUTER: 
-			EXECUTEI: 
-			ALUWB: 
-			MEMADR: 
-			MEMWR: 
-			MEMRD: 
-			MEMWB: 
-			BRANCH: 
+			MEMADR: controls = 13'b0000001001100;
+			MEMRD: controls = 13'b0000010000000;
+			MEMWB: controls = 13'b0001000100000;
+			MEMWR: controls = 13'b0010010000000;
+			EXECUTER: controls = 13'b0000000000001;
+			EXECUTEI: controls = 13'b0000000000011;
+			ALUWB: controls = 13'b0001000000000;
+			BRANCH: controls = 13'b0100001010010;
 			default: controls = 13'bxxxxxxxxxxxxx;
 		endcase
 	assign {NextPC, Branch, MemW, RegW, IRWrite, AdrSrc, ResultSrc, ALUSrcA, ALUSrcB, ALUOp} = controls;
@@ -522,7 +526,7 @@ module condcheck (
 );
 	input wire [3:0] Cond;
 	input wire [3:0] Flags;
-	output wire CondEx;
+	output reg CondEx;
 	wire neg;
 	wire zero;
 	wire carry;
@@ -589,7 +593,7 @@ module datapath (
 	input wire IRWrite;
 	input wire AdrSrc;
 	input wire [1:0] RegSrc;
-	input wire [1:0] ALUSrcA;
+	input wire ALUSrcA;
 	input wire [1:0] ALUSrcB;
 	input wire [1:0] ResultSrc;
 	input wire [1:0] ImmSrc;
