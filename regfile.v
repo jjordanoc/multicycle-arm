@@ -9,6 +9,7 @@ module regfile (
 	rd1,
 	rd2
 );
+	integer i;
 	input wire clk;
 	input wire we3;
 	input wire [3:0] ra1;
@@ -20,8 +21,9 @@ module regfile (
 	output wire [31:0] rd2;
 	reg [31:0] rf [14:0];
 	always @(posedge clk)
-		if (we3)
+		if (we3) begin
 			rf[wa3] <= wd3;
+		end
 	assign rd1 = (ra1 == 4'b1111 ? r15 : rf[ra1]);
 	assign rd2 = (ra2 == 4'b1111 ? r15 : rf[ra2]);
 endmodule

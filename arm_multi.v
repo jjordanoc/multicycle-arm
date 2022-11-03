@@ -438,7 +438,7 @@ module mainfsm (
 			MEMWR: controls = 12'b001001000010;
 			EXECUTER: controls = 12'b000000100001;
 			EXECUTEI: controls = 12'b000000100011;
-			ALUWB: controls = 12'b000100000011;
+			ALUWB: controls = 12'b000100000010;
 			BRANCH: controls = 12'b010000100010;
 			default: controls = 12'bxxxxxxxxxxxx;
 		endcase
@@ -481,13 +481,6 @@ module condlogic (
 
 	wire CurrentCondEx;
 	wire PCSrc;
-	// Delay writing flags until ALUWB state
-	flopr #(2) flagwritereg(
-		clk,
-		reset,
-		FlagW & {2 {CondEx}},
-		FlagWrite
-	);
 	flopenr #(2) flagreg1(
 		.clk(clk),
 		.reset(reset),
@@ -502,22 +495,22 @@ module condlogic (
 		.d(ALUFlags[1:0]),
 		.q(Flags[1:0])
 	);
-	// flopr #(1) condexreg(
-	// 	.clk(clk),
-	// 	.reset(reset),
-	// 	.d(CondEx),
-	// 	.q(CurrentCondEx)
-	// );
+	flopr #(1) condexreg(
+		.clk(clk),
+		.reset(reset),
+		.d(CondEx),
+		.q(CurrentCondEx)
+	);
 	condcheck cc(
 		.Cond(Cond),
 		.Flags(Flags),
 		.CondEx(CondEx)
 	);
-	// assign FlagWrite = FlagW & {2 {CurrentCondEx}};
+	assign FlagWrite = FlagW & {2 {CurrentCondEx}};
 	// assign FlagWrite = FlagW & {2 {CondEx}};
-	assign RegWrite = RegW & CondEx;
-	assign MemWrite = MemW & CondEx;
-	assign PCSrc = PCS & CondEx;
+	assign RegWrite = RegW & CurrentCondEx;
+	assign MemWrite = MemW & CurrentCondEx;
+	assign PCSrc = PCS & CurrentCondEx;
 	assign PCWrite = PCSrc | NextPC;
 endmodule
 

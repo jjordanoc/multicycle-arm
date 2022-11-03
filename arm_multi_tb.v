@@ -35,11 +35,11 @@ module testbench;
 				$finish;
 			end
 			else if (Adr !== 96) begin
-				$display("Simulation failed");
+				$display("Simulation failed, %d", WriteData);
 				$finish;
 			end
         end
-        if (i > 200) $finish;
+        
     end
 	initial begin
 		$dumpfile("arm_multi.vcd");
