@@ -1,5 +1,5 @@
 $date
-	Thu Nov 03 14:07:36 2022
+	Thu Nov 03 14:24:10 2022
 $end
 $version
 	Icarus Verilog
@@ -7,6 +7,8 @@ $end
 $timescale
 	1ps
 $end
+$scope module controller_tb $end
+$upscope $end
 $scope module testbench $end
 $var wire 32 ! Adr [31:0] $end
 $var wire 1 " MemWrite $end

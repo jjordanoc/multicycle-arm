@@ -1,0 +1,1 @@
+iverilog alu.v arm.v condcheck.v condlogic.v controller_tb.v controller.v datapath.v decode.v extend.v flopenr.v flopr.v flopr2.v mainfsm.v mem.v mux2.v mux3.v regfile.v top.v arm_multi_tb.v
