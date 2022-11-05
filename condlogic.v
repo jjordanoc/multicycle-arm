@@ -55,8 +55,8 @@ module condlogic (
 		.Flags(Flags),
 		.CondEx(CondEx)
 	);
-	assign FlagWrite = FlagW & {2 {CurrentCondEx}};
-	// assign FlagWrite = FlagW & {2 {CondEx}};
+	//assign FlagWrite = FlagW & {2 {CurrentCondEx}};
+	assign FlagWrite = FlagW & {2 {CondEx}};
 	assign RegWrite = RegW & CurrentCondEx;
 	assign MemWrite = MemW & CurrentCondEx;
 	assign PCSrc = PCS & CurrentCondEx;

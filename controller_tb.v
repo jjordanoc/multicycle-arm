@@ -18,7 +18,7 @@ module controller_tb;
 	wire IRWrite;
 	wire AdrSrc;
 	wire [1:0] RegSrc;
-	wire ALUSrcA;
+	wire [1:0] ALUSrcA;
 	wire [1:0] ALUSrcB;
 	wire [1:0] ResultSrc;
 	wire [1:0] ImmSrc;
