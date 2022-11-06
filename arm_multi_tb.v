@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module testbench;
+module arm_multi_tb;
     integer i = 0;
 	reg clk;
 	reg reset;
