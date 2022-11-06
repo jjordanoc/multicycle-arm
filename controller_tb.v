@@ -36,7 +36,7 @@ module controller_tb;
     end
 
     initial begin
-      $readmemh("controller_tv.tv", testvector);      // readmemb("filename",dest):  read file b is binary formay, h is hexadecimal format
+      $readmemh("controller_tv.tv", testvector);
       errors=0;
       vectornum=0;
       reset <= 1; #2; reset<=0;
@@ -52,20 +52,20 @@ module controller_tb;
             Funct = Instr[20];
             vectornum=vectornum+1;
         end
-        else if (i === 2 & Op === 2'b10) begin
+        else if (i === 3 & Op === 2'b10) begin
             i = 0;
         end
 
-        else if (i === 3 & Op === 2'b01 & Funct === 0)begin
+        else if (i === 4 & Op === 2'b01 & Funct === 0)begin
             i = 0;
         end
-        else if (i === 3 & Op === 2'b00)begin
+        else if (i === 4 & Op === 2'b00)begin
             i = 0;
         end
-        else if (i === 4 & Op === 2'b01 & Funct === 1)begin
+        else if (i === 5 & Op === 2'b01 & Funct === 1)begin
             i = 0;
         end
-        
+
         else begin
         i = i + 1;
         end
